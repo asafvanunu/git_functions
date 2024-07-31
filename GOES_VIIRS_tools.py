@@ -1,3 +1,12 @@
+# %% [markdown]
+# # Tools for processing GOES and VIIRS data
+# 
+# **Name:** Asaf Vanunu  
+# **Date:** July 30, 2024
+# 
+# ## Description
+# In this notebook you can find all the functions for the project
+
 # %%
 import numpy as np
 from PIL import Image
@@ -1336,9 +1345,10 @@ def update_W_matrix(original_matrix, threshold):
     for loc in i_j_list: ## for each location
         loc_row = loc[0] ## take the row location
         loc_col = loc[1] ## take col location
+        if W[loc_row, loc_col] < threshold:
         ## calculate max R
-        R = Max_R(location_row = loc_row, location_col = loc_col, matrix_shape = matrix_shape, matrix = original_matrix)
-        W[loc_row, loc_col] = R ## apply the new value
+            R = Max_R(location_row = loc_row, location_col = loc_col, matrix_shape = matrix_shape, matrix = original_matrix)
+            W[loc_row, loc_col] = R ## apply the new value
         
     W[W<threshold] = 0 ## everything below the threshold set to zero
         
