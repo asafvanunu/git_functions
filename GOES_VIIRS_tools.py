@@ -1873,4 +1873,72 @@ def generate_VIIRS_time_from_image(VIIRS_fire_path, type_of_date:str) -> str:
     elif type_of_date == "time":
         return(only_time)
 
+# %%
+def generate_VIIRS_points(VIIRS_fire_path, VIIRS_GEO_path, AOI_path=None):
+    """
+    Get a VIIRS fire product path and a VIIRS GEO path and create a gdf with all fire pixels time and date (only high conf pixels)
+    In addition it will be cropped to AOI region
+
+    :VIIRS_fire_path: VIIRS fire product for example "C:\\Asaf\\VIIRS\\VNP14IMG.A2020251.2042.001.2020258064138"
+    :VIIRS_GEO_path: VIIRS GEO file for example 'C:\\Asaf\\VIIRS\\VNP03IMG.A2020251.2042.002.2021125052211'
+    :AOI_path: Optional for example "F:\\Project_data2\\goes_data_false_alarm_cal\\shp\\poly.shp"
+    :return: geodataframe of fire pixels points in lat/lon WGS84 projection
+    """ 
+    ## Open files
+    VIIRS_fire = xr.open_dataset(VIIRS_fire_path)
+    VIIRS_GEO = rioxarray.open_rasterio(VIIRS_GEO_path)
+
+    ## VIIRS fire unique date
+    f_name = VIIRS_fire_path.split("\\")[-1]
+    g_name = VIIRS_GEO_path.split("\\")[-1]
+    fire_unique_date = f_name.split(".")[1]
+    fire_unique_time = f_name.split(".")[2]
+    
+    fire_pixel_high_con = [8,9] ## Nominal and high conf fire pixels
+    ## Take the fire mask
+    fire_mask = VIIRS_fire.variables["fire mask"].values ## Fire mask
+    fire_mask = np.flipud(fire_mask) ## flip the array
+    ## Take lat/lon matrix
+    lat_matrix = VIIRS_GEO[0]["latitude"].values[0] # lat
+    lon_matrix = VIIRS_GEO[0]["longitude"].values[0] # lon
+    ## Subset 
+    con = np.isin(fire_mask, fire_pixel_high_con) ## If the fire mask has high conf pixels
+    lat_pixels = lat_matrix[con] ## subset the lat
+    lon_pixels = lon_matrix[con] ## subset the lon
+    fire_pixels = fire_mask[con] ## subset the fire pixels values
+
+    ## List of:
+    points = [] ## lon/lat points 
+    lon_list = [] ## lon list
+    lat_list = [] ## lat list
+    conf_list = [] ## confidence list
+    for i in range(len(lon_pixels)): ## for i in range of all fire pixels
+        lon_list.append(lon_pixels[i]) ## append lon
+        lat_list.append(lat_pixels[i]) ## append lat
+        point = shapely.Point((lon_pixels[i], lat_pixels[i])) ### generate a point data
+        points.append(point) ## append it
+        if fire_pixels[i] == 9: ## append the confidence
+            conf_list.append("h")
+        elif fire_pixels[i] == 8:
+            conf_list.append("n")
+        
+
+    ## Gdf
+    Date = generate_VIIRS_time_from_image(VIIRS_fire_path=VIIRS_fire_path, type_of_date="date") ## create time, date, date time
+    Time = generate_VIIRS_time_from_image(VIIRS_fire_path=VIIRS_fire_path, type_of_date="time")
+    Date_Time = generate_VIIRS_time_from_image(VIIRS_fire_path=VIIRS_fire_path, type_of_date="date_time")
+    gdf = gpd.GeoDataFrame({"Fire_file":f_name,"GEO_file":g_name,"Unique_date":fire_unique_date, 
+                            "Unique_time":fire_unique_time,"Longitude":lon_list, "Latitude":lat_list,
+                            "DATE":Date,"TIME":Time,"DATE_TIME":Date_Time,
+                            "Confidence":conf_list,'geometry': points}, crs=4326) ## Create GDF
+
+    if AOI_path != None: ## If there is an AOI path
+    ## Crop to bbox
+        bbox = gpd.read_file(AOI_path)
+        bbox = bbox.to_crs(gdf.crs) ## convert to the same CRS
+        VIIRS_clip = gdf.overlay(bbox[['geometry']], how="intersection") ## clip to bbox
+        return(VIIRS_clip)
+    else: ## If there is no AOI path
+        return(gdf)
+
 
