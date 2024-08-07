@@ -1836,16 +1836,19 @@ def clip_GOES_to_VIIRS_bounds(GOES_path, VIIRS_image_path, GOES_CRS):
     ## Open data
     CRS = GOES_CRS
     VIIRS_bounds_polygon = get_VIIRS_bounds_polygon(VIIRS_fire_path=VIIRS_image_path)
-    GOES = rioxarray.open_rasterio(GOES_path)
-    ## set CRS for GOES image and the polygon
-    GOES = GOES.rio.set_crs(CRS)
     VIIRS_bounds_polygon = VIIRS_bounds_polygon.to_crs(CRS)
-    ## Clip
-    GOES_clip = GOES.rio.clip(VIIRS_bounds_polygon["geometry"])
-    ## Convert -99 to nan
-    con = GOES_clip.values[0] == -99
-    GOES_clip.values[0][con] = np.nan
-    return(GOES_clip)
+    if np.any(VIIRS_bounds_polygon.get_coordinates()[["x"]] == float("inf")): ## if there is a bug in the convertion
+        return("Error in the convertion")
+    else:
+        GOES = rioxarray.open_rasterio(GOES_path)
+        ## set CRS for GOES image and the polygon
+        GOES = GOES.rio.set_crs(CRS)
+        ## Clip
+        GOES_clip = GOES.rio.clip(VIIRS_bounds_polygon["geometry"])
+        ## Convert -99 to nan
+        con = GOES_clip.values[0] == -99
+        GOES_clip.values[0][con] = np.nan
+        return(GOES_clip)
 
 # %%
 def generate_VIIRS_time_from_image(VIIRS_fire_path, type_of_date:str) -> str:
