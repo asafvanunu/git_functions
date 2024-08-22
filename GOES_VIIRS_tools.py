@@ -1779,7 +1779,6 @@ def compare_GOES_VIIRS_image_time(GOES_fp_path, VIIRS_points, time_delta):
     
     ## Get VIIRS time
     VIIRS_file_list = [] ## set empty VIIRS list
-    VIIRS_GEO_list = [] ## empty list for GEO files
     GOES_list = []
     df_grouped = VIIRS_points.groupby(["DATE_TIME"]).first().reset_index() ## group by the unique time of the VIIRS image
     for i in range(len(df_grouped)): ## for every row
@@ -1789,11 +1788,9 @@ def compare_GOES_VIIRS_image_time(GOES_fp_path, VIIRS_points, time_delta):
         if con == True: ## If it is true
             VIIRS_file_name = df_grouped["Fire_file"].iloc[i] ## take the VIIRS file name
             VIIRS_file_list.append(VIIRS_file_name) ## append it to a list
-            VIIRS_GEO_name = df_grouped["GEO_file"].iloc[i] ## take the VIIRS file name
-            VIIRS_GEO_list.append(VIIRS_GEO_name) ## append it to a list
             GOES_list.append(GOES_fp_path)
 
-    d = {"GOES_file":GOES_list, "VIIRS_fire_file":VIIRS_file_list, "VIIRS_GEO_file":VIIRS_GEO_list}
+    d = {"GOES_file":GOES_list, "VIIRS_fire_file":VIIRS_file_list}
     df = pd.DataFrame(d)
     return(df)
 
